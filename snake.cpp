@@ -7,42 +7,38 @@ Snake::Snake(QWidget *parent) : QGraphicsView(parent)
 {
     setMinimumSize(460, 480);
     setMaximumSize(460, 480);
-    scene = new QGraphicsScene;
-    scene->setSceneRect(0, 0, 400, 400);
-    setScene(scene);
+    snakeScene = new QGraphicsScene;
+    snakeScene->setSceneRect(0, 0, 400, 400);
+    setScene(snakeScene);
 
-    myLCDNumber = new QLCDNumber;
-    myLCDNumber->setPalette(Qt::black);
-    myLCDNumber->setDigitCount(6);
-    myLCDNumber->display(scored);
-    myLCDNumber->setGeometry(0,410,80,30);
-    scene->addWidget(myLCDNumber);
+    scoreLCDNumber = new QLCDNumber;
+    scoreLCDNumber->setPalette(Qt::black);
+    scoreLCDNumber->setDigitCount(6);
+    scoreLCDNumber->display(scored);
+    scoreLCDNumber->setGeometry(0,410,80,30);
+    snakeScene->addWidget(scoreLCDNumber);
 
-    topline = scene->addLine(0, 0, 400, 0);
-    bottomline = scene->addLine(0, 400, 400, 400);
-    rightline = scene->addLine(400, 0, 400, 400);
-    leftline = scene->addLine(0, 0, 0, 400);
+    topLine = snakeScene->addLine(0, 0, 400, 0);
+    bottomLine = snakeScene->addLine(0, 400, 400, 400);
+    rightLine = snakeScene->addLine(400, 0, 400, 400);
+    leftLine = snakeScene->addLine(0, 0, 0, 400);
 
     onebox *box1 = new onebox(Qt::black);
-    scene->addItem(box1);
+    snakeScene->addItem(box1);
     box1->point.setX(20);
     box1->point.setY(20);
     box1->setPos(box1->point);
 
     boxlist << box1;
-    snakehead = 0;
+    snakeHead = 0;
 
-    //qDebug("test1");
-    //qDebug(str.toLatin1());
+    oneSecondTimer = new QTimer(this);
+    oneSecondTimer->setInterval(1000);
+    if(!oneSecondTimer->isActive())
+        oneSecondTimer->start();
+    connect(oneSecondTimer, SIGNAL(timeout()), this, SLOT(moveOneRound()));
 
-
-    mytimer = new QTimer(this);
-    mytimer->setInterval(1000);
-    if(!mytimer->isActive())
-        mytimer->start();
-    connect(mytimer, SIGNAL(timeout()), this, SLOT(timertimeout()));
-
-    addpoint();
+    addPoint();
  }
 
 struct location {
@@ -50,7 +46,7 @@ struct location {
     int y;
 };
 
-void getlocation(struct location *location_tmp)
+void getLocation(struct location *location_tmp)
 {
     int x = qrand() % 18;
     int y = qrand() % 18;
@@ -59,17 +55,17 @@ void getlocation(struct location *location_tmp)
     location_tmp->y = (y + 1) * 20;
 }
 
-void Snake::addpoint()
+void Snake::addPoint()
 {
     struct location tmp;
     onebox *box_tmp;
     bool new_location;
 
     scored++;
-    myLCDNumber->display(scored);
+    scoreLCDNumber->display(scored);
 
     while (1) {
-        getlocation(&tmp);
+        getLocation(&tmp);
         new_location = true;
         foreach (box_tmp, boxlist) {
             if ((box_tmp->point.x() == tmp.x)  && (box_tmp->point.y() == tmp.y))
@@ -81,22 +77,22 @@ void Snake::addpoint()
 
     if (color == true)
     {
-        box_new = new onebox(Qt::white);
+        newBox = new onebox(Qt::white);
         color = false;
     }
     else
     {
-        box_new = new onebox(Qt::black);
+        newBox = new onebox(Qt::black);
         color = true;
     }
 
-    scene->addItem(box_new);
-    box_new->point.setX(tmp.x);
-    box_new->point.setY(tmp.y);
-    box_new->setPos(box_new->point);
+    snakeScene->addItem(newBox);
+    newBox->point.setX(tmp.x);
+    newBox->point.setY(tmp.y);
+    newBox->setPos(newBox->point);
 }
 
-void Snake::makemove()
+void Snake::resetNodePosition()
 {
     onebox *tempbox;
     foreach (tempbox, boxlist) {
@@ -104,12 +100,12 @@ void Snake::makemove()
     }
 }
 
-void Snake::arrangepoint()
+void Snake::moveOneStep()
 {
     QPointF nextpoint, temppoint;
-    nextpoint = boxlist[snakehead]->point;
+    nextpoint = boxlist[snakeHead]->point;
 
-    for(int i = (snakehead - 1) ; i > -1; i--) {
+    for(int i = (snakeHead - 1) ; i > -1; i--) {
         temppoint = boxlist[i]->point;
         boxlist[i]->point = nextpoint;
         nextpoint = temppoint;
@@ -117,70 +113,70 @@ void Snake::arrangepoint()
 
 }
 
-int Snake::checkcollide()
+int Snake::checkCollideCondtion()
 {
-    if ((boxlist[snakehead]->point.x() == box_new->point.x()) && (boxlist[snakehead]->point.y() == box_new->point.y()))
+    if ((boxlist[snakeHead]->point.x() == newBox->point.x()) && (boxlist[snakeHead]->point.y() == newBox->point.y()))
     {
-        return 0;
+        return hitNewNode;
     }
 
-    if ((boxlist[snakehead]->point.x() > 399) || (boxlist[snakehead]->point.x() < 1) || (boxlist[snakehead]->point.y() > 399) || (boxlist[snakehead]->point.y() < 1))
+    if ((boxlist[snakeHead]->point.x() > 399) || (boxlist[snakeHead]->point.x() < 1) || (boxlist[snakeHead]->point.y() > 399) || (boxlist[snakeHead]->point.y() < 1))
     {
-        return 1;
+        return hitBound;
     }
 
     bool iscollide = false;
     for (int i = 0; i < (boxlist.count() - 1); i++) {
-        if ((boxlist[snakehead]->point.x() == boxlist[i]->point.x()) && (boxlist[snakehead]->point.y() == boxlist[i]->point.y()))
+        if ((boxlist[snakeHead]->point.x() == boxlist[i]->point.x()) && (boxlist[snakeHead]->point.y() == boxlist[i]->point.y()))
             iscollide = true;
     }
     if (iscollide)
     {
-        return 2;
+        return hitSelf;
     }
-    return 3;
+    return hitNone;
 }
 
-void Snake::setpoint(int location)
+void Snake::setSnakeHead()
 {
-    if (direction == 0)
+    if (direction == right)
     {
-        boxlist[location]->point.setX(boxlist[location]->point.x() + 20);
-    } else if (direction == 1)
+        boxlist[snakeHead]->point.setX(boxlist[snakeHead]->point.x() + 20);
+    } else if (direction == left)
     {
-        boxlist[location]->point.setX(boxlist[location]->point.x() - 20);
-    } else if (direction == 2)
+        boxlist[snakeHead]->point.setX(boxlist[snakeHead]->point.x() - 20);
+    } else if (direction == up)
     {
-        boxlist[location]->point.setY(boxlist[location]->point.y() - 20);
-    } else if (direction == 3)
+        boxlist[snakeHead]->point.setY(boxlist[snakeHead]->point.y() - 20);
+    } else if (direction == down)
     {
-        boxlist[location]->point.setY(boxlist[location]->point.y() + 20);
+        boxlist[snakeHead]->point.setY(boxlist[snakeHead]->point.y() + 20);
     }
 
 }
 
-void Snake::timertimeout()
+void Snake::moveOneRound()
 {
     int collide_condition;
-    arrangepoint();
-    setpoint(snakehead);
+    moveOneStep();
+    setSnakeHead();
 
-    collide_condition = checkcollide();
-    if (collide_condition == 0)
+    collide_condition = checkCollideCondtion();
+    if (collide_condition == hitNewNode)
     {
-        snakehead++;
-        boxlist << box_new;
-        setpoint(snakehead);
-        makemove();
-        addpoint();
+        snakeHead++;
+        boxlist << newBox;
+        setSnakeHead();
+        resetNodePosition();
+        addPoint();
     }
-    else if (collide_condition == 1 || checkcollide() == 2)
+    else if (collide_condition == hitBound || collide_condition == hitSelf)
     {
-        mytimer->stop();
+        oneSecondTimer->stop();
     }
-    else if (collide_condition == 3)
+    else if (collide_condition == hitNone)
     {
-        makemove();
+        resetNodePosition();
     }
 
 }
@@ -188,51 +184,48 @@ void Snake::timertimeout()
 
 bool Snake::checkFirstCoverSecond()
 {
-    if (snakehead == 0)
+    if (snakeHead == 0)
         return false;
     QPointF tempPoint;
-    tempPoint = boxlist[snakehead]->point;
+    tempPoint = boxlist[snakeHead]->point;
 
-    if (direction == 0)
+    if (direction == right)
     {
         tempPoint.setX(tempPoint.x() + 20);
-    } else if (direction == 1)
+    } else if (direction == left)
     {
         tempPoint.setX(tempPoint.x() - 20);
-    } else if (direction == 2)
+    } else if (direction == up)
     {
         tempPoint.setY(tempPoint.y() - 20);
-    } else if (direction == 3)
+    } else if (direction == down)
     {
         tempPoint.setY(tempPoint.y() + 20);
     }
 
-    if ((tempPoint.x() == boxlist[snakehead - 1]->point.x()) && (tempPoint.y() == boxlist[snakehead - 1]->point.y()))
+    if ((tempPoint.x() == boxlist[snakeHead - 1]->point.x()) && (tempPoint.y() == boxlist[snakeHead - 1]->point.y()))
         return true;
     return false;
 }
 
 void Snake::keyPressEvent(QKeyEvent *event)
 {
-    int collide_condition;
-
-
     if (event->key() == Qt::Key_Left)
     {
         directionOrigin = direction;
-        direction = 1;
+        direction = left;
     }else if (event->key() == Qt::Key_Up)
     {
         directionOrigin = direction;
-        direction = 2;
+        direction = up;
     } else if (event->key() == Qt::Key_Right)
     {
         directionOrigin = direction;
-        direction = 0;
+        direction = right;
     } else if (event->key() == Qt::Key_Down)
     {
         directionOrigin = direction;
-        direction = 3;
+        direction = down;
     }
 
     if (checkFirstCoverSecond())
@@ -241,26 +234,5 @@ void Snake::keyPressEvent(QKeyEvent *event)
         return;
     }
 
-    arrangepoint();
-    setpoint(snakehead);
-
-    collide_condition = checkcollide();
-
-    if (collide_condition == 0)
-    {
-        snakehead++;
-        boxlist << box_new;
-        setpoint(snakehead);
-        makemove();
-        addpoint();
-    }
-    else if (collide_condition == 1 || checkcollide() == 2)
-    {
-        mytimer->stop();
-    }
-    else if (collide_condition == 3)
-    {
-        makemove();
-    }
-
+    emit moveOneRound();
 }

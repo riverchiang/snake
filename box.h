@@ -9,8 +9,9 @@ public:
     onebox(const QColor &color = Qt::red);
     QRectF boundingRect() const;
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
-    //QPainterPath shape() const;
     QPointF point;
+    QPainterPath shape() const;
+
 private:
     QColor brushColor;
 };

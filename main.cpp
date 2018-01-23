@@ -1,13 +1,13 @@
 #include <QApplication>
 #include <QTime>
-#include "myview.h"
+#include "snake.h"
 
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
-    myview view;
+    Snake snake;
     qsrand(QTime(0,0,0).secsTo(QTime::currentTime()));
-    view.show();
+    snake.show();
 
     return a.exec();
 }

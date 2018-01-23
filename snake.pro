@@ -24,11 +24,11 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 
 SOURCES += main.cpp\
-    myview.cpp \
-    box.cpp
+    box.cpp \
+    snake.cpp
 
 HEADERS  += \
-    myview.h \
-    box.h
+    box.h \
+    snake.h
 
 FORMS    += widget.ui
